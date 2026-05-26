@@ -1,4 +1,5 @@
 import React from 'react';
+import { getJson } from './api';
 
 const departments = [
   { name: 'Cardiology', revenue: '₹84L', patients: 342, satisfaction: 4.8, efficiency: 94 },
@@ -9,6 +10,16 @@ const departments = [
 ];
 
 const PerformanceTable = () => {
+  const [apiDepartments, setApiDepartments] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/dashboard')
+      .then((data) => setApiDepartments(data.departmentPerformance))
+      .catch(() => setApiDepartments(null));
+  }, []);
+
+  const activeDepartments = apiDepartments ?? departments;
+
   return (
     <div className="glass-card" style={{ marginBottom: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -30,7 +41,7 @@ const PerformanceTable = () => {
             </tr>
           </thead>
           <tbody>
-            {departments.map((dept, index) => (
+            {activeDepartments.map((dept, index) => (
               <tr key={index} className="table-row-hover" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)', transition: 'var(--transition-smooth)' }}>
                 <td style={{ padding: '16px', fontWeight: 600 }}>{dept.name}</td>
                 <td style={{ padding: '16px' }}>{dept.revenue}</td>

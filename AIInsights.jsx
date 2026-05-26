@@ -1,4 +1,5 @@
 import React from 'react';
+import { getJson } from './api';
 import { Zap, Target, AlertTriangle, TrendingUp } from 'lucide-react';
 
 const InsightItem = ({ icon, text, type, label }) => {
@@ -54,6 +55,29 @@ const InsightItem = ({ icon, text, type, label }) => {
 };
 
 const AIInsights = () => {
+  const [insightsData, setInsightsData] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/ai-insights')
+      .then(setInsightsData)
+      .catch(() => setInsightsData(null));
+  }, []);
+
+  const liveInsights = insightsData ? [
+    ...insightsData.riskAlerts.map((alert) => ({
+      icon: <AlertTriangle size={20} />,
+      text: alert.text,
+      type: alert.type === 'Critical' ? 'critical' : 'warning',
+      label: alert.type,
+    })),
+    ...insightsData.opportunities.slice(0, 2).map((text) => ({
+      icon: <TrendingUp size={20} />,
+      text,
+      type: 'opportunity',
+      label: 'Opportunity',
+    })),
+  ].slice(0, 4) : null;
+
   return (
     <div className="glass-card glow-blue" style={{ 
       border: '1px solid rgba(0, 163, 255, 0.3)',
@@ -87,30 +111,14 @@ const AIInsights = () => {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <InsightItem 
-          icon={<TrendingUp size={20} />} 
-          text="Cardiology revenue increased by 18% following new lab implementation." 
-          type="opportunity"
-          label="Opportunity"
-        />
-        <InsightItem 
-          icon={<AlertTriangle size={20} />} 
-          text="ICU occupancy (92%) exceeded safe threshold for 3 consecutive hours." 
-          type="critical"
-          label="Critical"
-        />
-        <InsightItem 
-          icon={<AlertTriangle size={20} />} 
-          text="Emergency waiting time increased by 15% due to high patient inflow." 
-          type="warning"
-          label="Warning"
-        />
-        <InsightItem 
-          icon={<Target size={20} />} 
-          text="Neurology patient growth rising steadily; suggest expanding OPD capacity." 
-          type="opportunity"
-          label="Opportunity"
-        />
+        {(liveInsights ?? [
+          { icon: <TrendingUp size={20} />, text: "Cardiology revenue increased by 18% following new lab implementation.", type: "opportunity", label: "Opportunity" },
+          { icon: <AlertTriangle size={20} />, text: "ICU occupancy (92%) exceeded safe threshold for 3 consecutive hours.", type: "critical", label: "Critical" },
+          { icon: <AlertTriangle size={20} />, text: "Emergency waiting time increased by 15% due to high patient inflow.", type: "warning", label: "Warning" },
+          { icon: <Target size={20} />, text: "Neurology patient growth rising steadily; suggest expanding OPD capacity.", type: "opportunity", label: "Opportunity" },
+        ]).map((insight, index) => (
+          <InsightItem key={index} {...insight} />
+        ))}
       </div>
 
       <button style={{ 

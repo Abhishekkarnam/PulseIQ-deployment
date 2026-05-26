@@ -1,4 +1,5 @@
 import React from 'react';
+import { getJson } from './api';
 import { AlertCircle, Clock, Users } from 'lucide-react';
 
 const AlertRow = ({ icon, title, description, time, type }) => {
@@ -30,6 +31,42 @@ const AlertRow = ({ icon, title, description, time, type }) => {
 };
 
 const AlertsPanel = () => {
+  const [apiAlerts, setApiAlerts] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/dashboard')
+      .then((data) => setApiAlerts(data.alerts))
+      .catch(() => setApiAlerts(null));
+  }, []);
+
+  const fallbackAlerts = [
+    {
+      icon: <AlertCircle size={20} />,
+      title: 'ICU Capacity Critical',
+      description: 'ICU 1 & 2 are at 96% capacity. Bed allocation for secondary transfers suspended.',
+      time: '12 mins ago',
+      type: 'critical',
+    },
+    {
+      icon: <Users size={20} />,
+      title: 'Staff Shortage: Emergency',
+      description: 'Night shift staffing below requirement (4/12). Urgent rotation requested.',
+      time: '45 mins ago',
+      type: 'critical',
+    },
+    {
+      icon: <Clock size={20} />,
+      title: 'Insurance Claim Delays',
+      description: 'Significant increase in insurance processing time for TPA vendors.',
+      time: '2 hours ago',
+      type: 'warning',
+    },
+  ];
+  const alerts = apiAlerts?.map((alert, index) => ({
+    ...alert,
+    icon: index === 1 ? <Users size={20} /> : index === 2 ? <Clock size={20} /> : <AlertCircle size={20} />,
+  })) ?? fallbackAlerts;
+
   return (
     <div className="glass-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -42,34 +79,16 @@ const AlertsPanel = () => {
             fontWeight: 700, 
             padding: '2px 8px', 
             borderRadius: '10px' 
-          }}>3 Active</span>
+          }}>{alerts.length} Active</span>
         </div>
         <button style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
           Mark all read
         </button>
       </div>
 
-      <AlertRow 
-        icon={<AlertCircle size={20} />}
-        title="ICU Capacity Critical"
-        description="ICU 1 & 2 are at 96% capacity. Bed allocation for secondary transfers suspended."
-        time="12 mins ago"
-        type="critical"
-      />
-      <AlertRow 
-        icon={<Users size={20} />}
-        title="Staff Shortage: Emergency"
-        description="Night shift staffing below requirement (4/12). Urgent rotation requested."
-        time="45 mins ago"
-        type="critical"
-      />
-      <AlertRow 
-        icon={<Clock size={20} />}
-        title="Insurance Claim Delays"
-        description="Significant increase in insurance processing time for TPA vendors."
-        time="2 hours ago"
-        type="warning"
-      />
+      {alerts.map((alert, index) => (
+        <AlertRow key={index} {...alert} />
+      ))}
     </div>
   );
 };

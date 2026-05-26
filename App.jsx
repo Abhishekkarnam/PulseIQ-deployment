@@ -1,14 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
-import Navbar from './components/Navbar';
-import Dashboard from './pages/Dashboard';
-import FinancialAnalytics from './pages/FinancialAnalytics';
-import PatientInsights from './pages/PatientInsights';
-import Operations from './pages/Operations';
-import StaffManagement from './pages/StaffManagement';
-import AIInsightsPage from './pages/AIInsightsPage';
-import Settings from './pages/Settings';
+import Sidebar from './Sidebar';
+import Navbar from './Navbar';
+import Dashboard from './Dashboard';
+import FinancialAnalytics from './FinancialAnalytics';
+import PatientInsights from './PatientInsights';
+import Operations from './Operations';
+import StaffManagement from './StaffManagement';
+import AIInsightsPage from './AIInsightsPage';
+import Settings from './Settings';
 import './index.css';
 
 function App() {

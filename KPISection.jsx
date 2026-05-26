@@ -1,4 +1,5 @@
 import React from 'react';
+import { getJson } from './api';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -56,7 +57,7 @@ const KPICard = ({ title, value, trend, trendValue, icon, color, isNegative }) =
 };
 
 const KPISection = () => {
-  const kpis = [
+  const fallbackKpis = [
     {
       title: 'Total Revenue',
       value: '₹2.4 Cr',
@@ -101,6 +102,18 @@ const KPISection = () => {
       isNegative: true
     }
   ];
+  const [apiKpis, setApiKpis] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/dashboard')
+      .then((data) => setApiKpis(data.kpis))
+      .catch(() => setApiKpis(null));
+  }, []);
+
+  const kpis = fallbackKpis.map((fallback) => {
+    const apiKpi = apiKpis?.find((item) => item.title === fallback.title);
+    return apiKpi ? { ...fallback, ...apiKpi } : fallback;
+  });
 
   return (
     <div style={{ 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { exportUrl, getJson } from './api';
 import { 
   Users, 
   UserPlus, 
@@ -96,6 +97,26 @@ const PatientKPI = ({ title, value, trend, icon, color, isNegative }) => (
 const PatientInsights = () => {
   const [dataAge, setDataAge] = React.useState('Last Week');
   const [isSimulating, setIsSimulating] = React.useState(false);
+  const [patientData, setPatientData] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/patients')
+      .then(setPatientData)
+      .catch(() => setPatientData(null));
+  }, []);
+
+  const activeAdmissionData = patientData?.admissions ?? admissionData;
+  const activeDeptLoad = patientData?.departmentLoad?.map((item) => ({
+    ...item,
+    count: Number(item.count).toLocaleString(),
+  })) ?? deptLoad;
+  const activeSatisfactionData = patientData?.satisfactionRadar?.map((item) => ({
+    subject: item.subject,
+    A: item.score,
+    fullMark: 100,
+  })) ?? satisfactionData;
+  const activePatientList = patientData?.recentAdmissions ?? patientList;
+  const kpis = patientData?.kpis;
 
   const simulateChange = () => {
     setIsSimulating(true);
@@ -118,7 +139,7 @@ const PatientInsights = () => {
             <Calendar size={18} />
             <span style={{ fontSize: '0.9rem' }}>{dataAge}</span>
           </div>
-          <button style={{ 
+          <button onClick={() => window.location.href = exportUrl('patients')} style={{ 
             backgroundColor: 'var(--accent-blue)', 
             color: 'white', 
             border: 'none', 
@@ -139,12 +160,12 @@ const PatientInsights = () => {
 
       {/* SECTION 1 — PATIENT KPI CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <PatientKPI title="Total Patients" value="12,482" trend="+12%" icon={<Users size={24} />} color="0, 163, 255" />
-        <PatientKPI title="New Admissions" value="156" trend="+8%" icon={<UserPlus size={24} />} color="16, 185, 129" />
-        <PatientKPI title="Avg Stay Duration" value="4.2 Days" trend="-5%" icon={<Clock size={24} />} color="168, 85, 247" />
-        <PatientKPI title="Patient Satisfaction" value="4.8/5" trend="+2%" icon={<Star size={24} />} color="251, 191, 36" />
-        <PatientKPI title="Outpatients" value="8,240" trend="+15%" icon={<Activity size={24} />} color="0, 242, 254" />
-        <PatientKPI title="Surgeries Done" value="214" trend="+4%" icon={<Heart size={24} />} color="239, 68, 68" />
+        <PatientKPI title="Total Patients" value={kpis?.totalPatients ?? "12,482"} trend={kpis?.trends?.patients ?? "+12%"} icon={<Users size={24} />} color="0, 163, 255" />
+        <PatientKPI title="New Admissions" value={kpis?.newAdmissions ?? "156"} trend={kpis?.trends?.patients ?? "+8%"} icon={<UserPlus size={24} />} color="16, 185, 129" />
+        <PatientKPI title="Avg Stay Duration" value={kpis?.avgStayDuration ?? "4.2 Days"} trend="-5%" icon={<Clock size={24} />} color="168, 85, 247" />
+        <PatientKPI title="Patient Satisfaction" value={kpis?.patientSatisfaction ?? "4.8/5"} trend={kpis?.trends?.satisfaction ?? "+2%"} icon={<Star size={24} />} color="251, 191, 36" />
+        <PatientKPI title="Outpatients" value={kpis?.outpatients ?? "8,240"} trend={kpis?.trends?.outpatients ?? "+15%"} icon={<Activity size={24} />} color="0, 242, 254" />
+        <PatientKPI title="Surgeries Done" value={kpis?.surgeriesDone ?? "214"} trend={kpis?.trends?.surgeries ?? "+4%"} icon={<Heart size={24} />} color="239, 68, 68" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -153,7 +174,7 @@ const PatientInsights = () => {
           <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '2rem' }}>Admission vs Discharge Trends</h4>
           <div style={{ width: '100%', height: '350px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={admissionData}>
+              <AreaChart data={activeAdmissionData}>
                 <defs>
                   <linearGradient id="colorAdm" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.3}/>
@@ -180,8 +201,8 @@ const PatientInsights = () => {
           <div style={{ width: '100%', height: '280px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={deptLoad} cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={5} dataKey="value">
-                  {deptLoad.map((entry, index) => (
+                <Pie data={activeDeptLoad} cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={5} dataKey="value">
+                  {activeDeptLoad.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                   ))}
                 </Pie>
@@ -190,7 +211,7 @@ const PatientInsights = () => {
             </ResponsiveContainer>
           </div>
           <div style={{ marginTop: '1.5rem' }}>
-            {deptLoad.map((item, index) => (
+            {activeDeptLoad.map((item, index) => (
               <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }} />
@@ -212,7 +233,7 @@ const PatientInsights = () => {
           <h4 className="outfit" style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '1.5rem' }}>Patient Satisfaction Radar</h4>
           <div style={{ width: '100%', height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={satisfactionData}>
+              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={activeSatisfactionData}>
                 <PolarGrid stroke="rgba(255, 255, 255, 0.1)" />
                 <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255, 255, 255, 0.6)', fontSize: 11 }} />
                 <Radar name="Satisfaction" dataKey="A" stroke="var(--accent-blue)" fill="var(--accent-blue)" fillOpacity={0.4} />
@@ -236,7 +257,7 @@ const PatientInsights = () => {
                  </tr>
                </thead>
                <tbody>
-                 {patientList.map((p, i) => (
+                 {activePatientList.map((p, i) => (
                    <tr key={i} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
                       <td style={{ padding: '16px' }}>
                         <p style={{ fontWeight: 600 }}>{p.name}</p>

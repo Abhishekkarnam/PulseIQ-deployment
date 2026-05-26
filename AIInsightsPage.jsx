@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { exportUrl, getJson, postJson } from './api';
 import { 
   Zap, 
   Target, 
@@ -48,11 +49,16 @@ const AIInsightsPage = () => {
   const [loadingText, setLoadingText] = useState("Initializing PulseIQ AI...");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
+  const [insightsData, setInsightsData] = useState(null);
   const [chatHistory, setChatHistory] = useState([
     { type: 'bot', text: 'Hello, CEO. I am your PulseIQ Assistant. What would you like to know about hospital performance tonight?' }
   ]);
 
   useEffect(() => {
+    getJson('/api/ai-insights')
+      .then(setInsightsData)
+      .catch(() => setInsightsData(null));
+
     const sequence = [
       { text: "Scanning hospital operations...", delay: 1000 },
       { text: "Analyzing financial trends...", delay: 2000 },
@@ -70,19 +76,35 @@ const AIInsightsPage = () => {
     });
   }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!chatMessage.trim()) return;
-    const newHistory = [...chatHistory, { type: 'user', text: chatMessage }];
+    const outgoingMessage = chatMessage;
+    const newHistory = [...chatHistory, { type: 'user', text: outgoingMessage }];
     setChatHistory(newHistory);
     setChatMessage("");
-    
-    setTimeout(() => {
-      setChatHistory(prev => [...prev, { 
-        type: 'bot', 
-        text: 'Cardiology is expected to grow by 12% next quarter based on demographic trends in Mumbai west.' 
+
+    try {
+      const data = await postJson('/api/assistant/chat', { message: outgoingMessage });
+      setChatHistory(prev => [...prev, { type: 'bot', text: data.reply }]);
+    } catch {
+      setChatHistory(prev => [...prev, {
+        type: 'bot',
+        text: 'I could not reach the backend right now, but the dashboard fallback is still available.'
       }]);
-    }, 1000);
+    }
   };
+
+  const activePredictionData = insightsData?.predictions ?? predictionData;
+  const activeRiskAlerts = insightsData?.riskAlerts?.map((alert) => ({
+    text: alert.text,
+    type: alert.type,
+    color: alert.type === 'Critical' ? '#ef4444' : alert.type === 'Warning' ? '#f59e0b' : '#a855f7',
+  })) ?? [
+    { text: "ICU occupancy exceeded 92%", type: "Critical", color: "#ef4444" },
+    { text: "ER wait times increasing rapidly", type: "Warning", color: "#f59e0b" },
+    { text: "Staff shortage in ER ward", type: "Critical", color: "#ef4444" },
+    { text: "Claim delays affecting revenue", type: "Moderate", color: "#a855f7" }
+  ];
 
   if (loading) {
     return (
@@ -125,7 +147,7 @@ const AIInsightsPage = () => {
           <div className="glass" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', cursor: 'pointer' }}>
             <Filter size={18} /> <span style={{ fontSize: '0.9rem' }}>All Branches</span> <ChevronDown size={14} />
           </div>
-          <button style={{ backgroundColor: 'var(--accent-blue)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => window.location.href = exportUrl('ai-insights')} style={{ backgroundColor: 'var(--accent-blue)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}>
             Generate AI Report
           </button>
         </div>
@@ -138,7 +160,7 @@ const AIInsightsPage = () => {
             <Sparkles size={32} />
           </div>
           <p style={{ fontSize: '1.4rem', fontWeight: 500, lineHeight: 1.6, color: 'white' }}>
-            “Revenue growth remains <span style={{ color: 'var(--accent-teal)' }}>strong this month</span>, driven primarily by cardiology services. However, <span style={{ color: '#ef4444' }}>ICU occupancy</span> and <span style={{ color: '#f59e0b' }}>emergency wait times</span> require immediate attention.”
+            “{insightsData?.summary ?? 'Revenue growth remains strong this month, driven primarily by cardiology services. However, ICU occupancy and emergency wait times require immediate attention.'}”
           </p>
         </div>
       </div>
@@ -147,12 +169,7 @@ const AIInsightsPage = () => {
         {/* SECTION 2 — RISK ALERTS */}
         <div className="glass-card">
           <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>AI Risk Detection 🚨</h4>
-          {[
-            { text: "ICU occupancy exceeded 92%", type: "Critical", color: "#ef4444" },
-            { text: "ER wait times increasing rapidly", type: "Warning", color: "#f59e0b" },
-            { text: "Staff shortage in ER ward", type: "Critical", color: "#ef4444" },
-            { text: "Claim delays affecting revenue", type: "Moderate", color: "#a855f7" }
-          ].map((alert, i) => (
+          {activeRiskAlerts.map((alert, i) => (
             <div key={i} className="glass" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', marginBottom: '12px', borderLeft: `4px solid ${alert.color}` }}>
               <AlertCircle size={20} color={alert.color} />
               <span style={{ fontSize: '0.9rem', flex: 1 }}>{alert.text}</span>
@@ -170,7 +187,7 @@ const AIInsightsPage = () => {
               <circle cx="50" cy="50" r="45" fill="none" stroke="var(--accent-teal)" strokeWidth="8" strokeDasharray="230" strokeDashoffset="45" strokeLinecap="round" />
             </svg>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-              <h2 className="outfit" style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-teal)' }}>87</h2>
+              <h2 className="outfit" style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-teal)' }}>{insightsData?.healthScore ?? 87}</h2>
             </div>
           </div>
           <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Hospital Efficiency Score: <span style={{ color: 'white' }}>Excellent</span></p>
@@ -183,7 +200,7 @@ const AIInsightsPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
           <div style={{ height: '250px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={predictionData}>
+              <AreaChart data={activePredictionData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }} />
                 <Tooltip />
@@ -194,7 +211,7 @@ const AIInsightsPage = () => {
           </div>
           <div style={{ height: '250px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={predictionData}>
+              <LineChart data={activePredictionData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }} />
                 <Tooltip />
@@ -212,7 +229,7 @@ const AIInsightsPage = () => {
         {/* SECTION 4 — RECOMMENDATIONS */}
         <div className="glass-card">
            <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Strategic Recommendations ⭐</h4>
-           {["Increase ICU staffing by 10%", "Expand Neurology department capacity", "Reallocate staff during ER peak"].map((txt, i) => (
+           {(insightsData?.recommendations ?? ["Increase ICU staffing by 10%", "Expand Neurology department capacity", "Reallocate staff during ER peak"]).map((txt, i) => (
              <div key={i} className="glass" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', marginBottom: '10px' }}>
                 <Lightbulb size={20} color="var(--accent-teal)" />
                 <span style={{ fontSize: '0.9rem' }}>{txt}</span>
@@ -223,7 +240,7 @@ const AIInsightsPage = () => {
         {/* SECTION 5 — OPPORTUNITIES */}
         <div className="glass-card">
            <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Opportunity Insights 📈</h4>
-           {["Telemedicine consultations +22%", "Mumbai branch profitability ↑", "Cardiology growth potential: High"].map((txt, i) => (
+           {(insightsData?.opportunities ?? ["Telemedicine consultations +22%", "Mumbai branch profitability ↑", "Cardiology growth potential: High"]).map((txt, i) => (
              <div key={i} style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
                 <span>{txt}</span>
                 <ArrowUpRight size={16} color="#10b981" />

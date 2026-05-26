@@ -1,4 +1,5 @@
 import React from 'react';
+import { exportUrl, getJson } from './api';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -80,6 +81,29 @@ const FinancialKPI = ({ title, value, trend, icon, color, isNegative }) => (
 );
 
 const FinancialAnalytics = () => {
+  const [financialData, setFinancialData] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/financials')
+      .then(setFinancialData)
+      .catch(() => setFinancialData(null));
+  }, []);
+
+  const activeRevenueData = financialData?.monthlyRevenue ?? revenueData;
+  const activeDeptRevenue = financialData?.departmentRevenue ?? deptRevenue;
+  const activeBranchData = financialData?.branchPerformance ?? branchData;
+  const kpis = financialData?.kpis;
+  const insights = financialData?.insights?.map((text, index) => ({
+    text,
+    tag: index === 1 ? 'Warning' : 'Opportunity',
+    color: index === 1 ? '#f59e0b' : '#10b981',
+  })) ?? [
+    { text: "Cardiology generated highest revenue this quarter.", tag: "Opportunity", color: "#10b981" },
+    { text: "Operational costs increased by 11% primarily in procurement.", tag: "Warning", color: "#f59e0b" },
+    { text: "Insurance claim delays affecting cash flow in Mumbai branch.", tag: "Critical", color: "#ef4444" },
+    { text: "Neurology expected to grow next month based on referral trends.", tag: "Opportunity", color: "#10b981" }
+  ];
+
   return (
     <div className="animate-fade-in">
       {/* Page Header */}
@@ -97,7 +121,7 @@ const FinancialAnalytics = () => {
             <Filter size={18} />
             <span style={{ fontSize: '0.9rem' }}>All Branches</span>
           </div>
-          <button style={{ 
+          <button onClick={() => window.location.href = exportUrl('financials')} style={{ 
             backgroundColor: 'var(--accent-blue)', 
             color: 'white', 
             border: 'none', 
@@ -118,12 +142,12 @@ const FinancialAnalytics = () => {
 
       {/* SECTION 1 — FINANCIAL KPI CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <FinancialKPI title="Total Revenue" value="₹2.4 Cr" trend="+18%" icon={<DollarSign size={24} />} color="0, 163, 255" />
-        <FinancialKPI title="Net Profit" value="₹68L" trend="+12%" icon={<TrendingUp size={24} />} color="16, 185, 129" />
-        <FinancialKPI title="Operational Costs" value="₹1.1 Cr" trend="+5%" icon={<CreditCard size={24} />} color="245, 158, 11" />
+        <FinancialKPI title="Total Revenue" value={kpis?.totalRevenue ?? "₹2.4 Cr"} trend={kpis?.trends?.revenue ?? "+18%"} icon={<DollarSign size={24} />} color="0, 163, 255" />
+        <FinancialKPI title="Net Profit" value={kpis?.netProfit ?? "₹68L"} trend={kpis?.trends?.profit ?? "+12%"} icon={<TrendingUp size={24} />} color="16, 185, 129" />
+        <FinancialKPI title="Operational Costs" value={kpis?.operationalCosts ?? "₹1.1 Cr"} trend={kpis?.trends?.costs ?? "+5%"} icon={<CreditCard size={24} />} color="245, 158, 11" />
         <FinancialKPI title="Insurance Approved" value="84%" trend="+3%" icon={<Activity size={24} />} color="0, 242, 254" />
-        <FinancialKPI title="Outstanding" value="₹21L" trend="+15%" icon={<AlertTriangle size={24} />} color="239, 68, 68" isNegative />
-        <FinancialKPI title="Growth Rate" value="+14%" trend="+2%" icon={<ArrowUpRight size={24} />} color="168, 85, 247" />
+        <FinancialKPI title="Outstanding" value={kpis?.outstanding ?? "₹21L"} trend="+15%" icon={<AlertTriangle size={24} />} color="239, 68, 68" isNegative />
+        <FinancialKPI title="Growth Rate" value={kpis?.growthRate ?? "+14%"} trend="+2%" icon={<ArrowUpRight size={24} />} color="168, 85, 247" />
       </div>
 
       {/* SECTION 2 & 3 — REVENUE & EXPENSE ANALYTICS */}
@@ -132,7 +156,7 @@ const FinancialAnalytics = () => {
           <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '2rem' }}>Monthly Revenue vs Expenses</h4>
           <div style={{ width: '100%', height: '350px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
+              <AreaChart data={activeRevenueData}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.3}/>
@@ -163,8 +187,8 @@ const FinancialAnalytics = () => {
           <div style={{ width: '100%', height: '280px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={deptRevenue} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
-                  {deptRevenue.map((entry, index) => (
+                <Pie data={activeDeptRevenue} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                  {activeDeptRevenue.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                   ))}
                 </Pie>
@@ -173,7 +197,7 @@ const FinancialAnalytics = () => {
             </ResponsiveContainer>
           </div>
           <div style={{ marginTop: '1rem' }}>
-            {deptRevenue.map((item, index) => (
+            {activeDeptRevenue.map((item, index) => (
               <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }} />
@@ -201,7 +225,7 @@ const FinancialAnalytics = () => {
               </tr>
             </thead>
             <tbody>
-              {branchData.map((branch, index) => (
+              {activeBranchData.map((branch, index) => (
                 <tr key={index} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
                   <td style={{ padding: '16px', fontWeight: 600 }}>{branch.branch}</td>
                   <td style={{ padding: '16px' }}>{branch.revenue}</td>
@@ -264,12 +288,7 @@ const FinancialAnalytics = () => {
             <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600 }}>AI Financial Insights</h4>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {[
-              { text: "Cardiology generated highest revenue this quarter.", tag: "Opportunity", color: "#10b981" },
-              { text: "Operational costs increased by 11% primarily in procurement.", tag: "Warning", color: "#f59e0b" },
-              { text: "Insurance claim delays affecting cash flow in Mumbai branch.", tag: "Critical", color: "#ef4444" },
-              { text: "Neurology expected to grow next month based on referral trends.", tag: "Opportunity", color: "#10b981" }
-            ].map((insight, i) => (
+            {insights.map((insight, i) => (
               <div key={i} className="glass" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.9rem' }}>{insight.text}</span>
                 <span style={{ 

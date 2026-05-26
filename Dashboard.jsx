@@ -1,10 +1,10 @@
 import React from 'react';
-import KPISection from '../components/KPISection';
-import RevenueSection from '../components/RevenueSection';
-import OperationsSection from '../components/OperationsSection';
-import AIInsights from '../components/AIInsights';
-import PerformanceTable from '../components/PerformanceTable';
-import AlertsPanel from '../components/AlertsPanel';
+import KPISection from './KPISection';
+import RevenueSection from './RevenueSection';
+import OperationsSection from './OperationsSection';
+import AIInsights from './AIInsights';
+import PerformanceTable from './PerformanceTable';
+import AlertsPanel from './AlertsPanel';
 
 const Dashboard = () => {
   return (

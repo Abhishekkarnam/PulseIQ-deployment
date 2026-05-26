@@ -1,4 +1,5 @@
 import React from 'react';
+import { exportUrl, getJson } from './api';
 import { 
   Activity, 
   Bed, 
@@ -56,6 +57,20 @@ const equipmentStatus = [
 ];
 
 const Operations = () => {
+  const [operationsData, setOperationsData] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/operations')
+      .then(setOperationsData)
+      .catch(() => setOperationsData(null));
+  }, []);
+
+  const activeBedData = operationsData?.bedCapacity ?? bedData;
+  const activeOtEfficiency = operationsData?.otEfficiency ?? otEfficiency;
+  const activeEquipmentStatus = operationsData?.equipmentStatus ?? equipmentStatus;
+  const activeAlerts = operationsData?.alerts;
+  const kpis = operationsData?.kpis;
+
   return (
     <div className="animate-fade-in">
       {/* Page Header */}
@@ -69,7 +84,7 @@ const Operations = () => {
             <Calendar size={18} />
             Today
           </button>
-          <button style={{ backgroundColor: 'var(--accent-blue)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => window.location.href = exportUrl('operations')} style={{ backgroundColor: 'var(--accent-blue)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}>
              Facility Report
           </button>
         </div>
@@ -78,10 +93,10 @@ const Operations = () => {
       {/* SECTION 1 — CAPACITY KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         {[
-          { label: 'Overall Bed Occupancy', value: '86%', trend: '+4%', icon: <Bed size={24} />, color: '0, 163, 255' },
-          { label: 'OT Utilization', value: '92%', trend: '+12%', icon: <Activity size={24} />, color: '168, 85, 247' },
-          { label: 'Avg. Turnaround Time', value: '45m', trend: '-8%', icon: <Clock size={24} />, color: '16, 185, 129' },
-          { label: 'Safety Compliance', value: '98%', trend: 'Stable', icon: <ShieldCheck size={24} />, color: '0, 242, 254' }
+          { label: 'Overall Bed Occupancy', value: kpis?.overallBedOccupancy ?? '86%', trend: kpis?.trends?.occupancy ?? '+4%', icon: <Bed size={24} />, color: '0, 163, 255' },
+          { label: 'OT Utilization', value: kpis?.otUtilization ?? '92%', trend: kpis?.trends?.ot ?? '+12%', icon: <Activity size={24} />, color: '168, 85, 247' },
+          { label: 'Avg. Turnaround Time', value: kpis?.avgTurnaroundTime ?? '45m', trend: '-8%', icon: <Clock size={24} />, color: '16, 185, 129' },
+          { label: 'Safety Compliance', value: kpis?.safetyCompliance ?? '98%', trend: 'Stable', icon: <ShieldCheck size={24} />, color: '0, 242, 254' }
         ].map((kpi, i) => (
           <div key={i} className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
@@ -101,7 +116,7 @@ const Operations = () => {
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Occupied vs Total beds — live snapshot</p>
           <div style={{ width: '100%', height: '280px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={bedData} layout="vertical">
+              <BarChart data={activeBedData} layout="vertical">
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: 'white', fontSize: 13 }} width={120} />
                 <Tooltip 
@@ -110,7 +125,7 @@ const Operations = () => {
                    formatter={(value, name) => [value + ' beds', name === 'occupied' ? 'Occupied' : 'Total Capacity']}
                 />
                 <Bar dataKey="occupied" radius={[0, 4, 4, 0]} barSize={22} label={{ position: 'right', fill: 'white', fontSize: 11, formatter: (v) => v }}>
-                   {bedData.map((entry, index) => (
+                   {activeBedData.map((entry, index) => (
                      <Cell key={`cell-${index}`} fill={entry.color} />
                    ))}
                 </Bar>
@@ -120,7 +135,7 @@ const Operations = () => {
           </div>
           {/* Bed Count Summary Table */}
           <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-            {bedData.map((ward, i) => (
+            {activeBedData.map((ward, i) => (
               <div key={i} style={{ textAlign: 'center', padding: '10px 6px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${ward.color}30` }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: ward.color, margin: '0 auto 6px' }} />
                 <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '4px', lineHeight: 1.2 }}>{ward.name}</p>
@@ -136,7 +151,7 @@ const Operations = () => {
           <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '2rem' }}>Operational Efficiency (OT)</h4>
           <div style={{ width: '100%', height: '280px' }}>
             <ResponsiveContainer width="100%" height="100%">
-               <AreaChart data={otEfficiency}>
+               <AreaChart data={activeOtEfficiency}>
                  <defs>
                    <linearGradient id="colorLoad" x1="0" y1="0" x2="0" y2="1">
                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
@@ -161,7 +176,7 @@ const Operations = () => {
         <div className="glass-card">
            <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Critical Equipment Status</h4>
            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-             {equipmentStatus.map((eq, i) => (
+             {activeEquipmentStatus.map((eq, i) => (
                <div key={i} className="glass" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                  <div>
                     <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>{eq.name}</p>
@@ -187,6 +202,17 @@ const Operations = () => {
         <div className="glass-card">
            <h4 className="outfit" style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Operational Alerts</h4>
            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {activeAlerts?.map((alert, i) => (
+                <div key={i} style={{ display: 'flex', gap: '12px', padding: '12px', borderRadius: '12px', background: alert.type === 'critical' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.05)', borderLeft: `4px solid ${alert.type === 'critical' ? '#ef4444' : '#f59e0b'}` }}>
+                   <AlertTriangle size={20} color={alert.type === 'critical' ? '#ef4444' : '#f59e0b'} />
+                   <div>
+                      <h6 style={{ fontWeight: 600 }}>{alert.title}</h6>
+                      <p style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>{alert.description}</p>
+                   </div>
+                </div>
+              ))}
+              {!activeAlerts && (
+                <>
               <div style={{ display: 'flex', gap: '12px', padding: '12px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.05)', borderLeft: '4px solid #ef4444' }}>
                  <AlertTriangle size={20} color="#ef4444" />
                  <div>
@@ -208,6 +234,8 @@ const Operations = () => {
                     <p style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>Pharma inventory for ICU A completed successfully.</p>
                  </div>
               </div>
+                </>
+              )}
            </div>
         </div>
       </div>

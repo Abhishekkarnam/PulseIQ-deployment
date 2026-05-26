@@ -1,4 +1,5 @@
 import React from 'react';
+import { getJson } from './api';
 import { 
   LineChart, 
   Line, 
@@ -46,6 +47,17 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const RevenueSection = () => {
+  const [dashboardData, setDashboardData] = React.useState(null);
+
+  React.useEffect(() => {
+    getJson('/api/dashboard')
+      .then(setDashboardData)
+      .catch(() => setDashboardData(null));
+  }, []);
+
+  const activeRevenueData = dashboardData?.revenueTrend ?? revenueData;
+  const activeDepartmentData = dashboardData?.departmentRevenue ?? departmentData;
+
   return (
     <div style={{ 
       display: 'grid', 
@@ -67,7 +79,7 @@ const RevenueSection = () => {
         
         <div style={{ width: '100%', height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={revenueData}>
+              <AreaChart data={activeRevenueData}>
               <defs>
                 <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.3}/>
@@ -112,7 +124,7 @@ const RevenueSection = () => {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={departmentData}
+                data={activeDepartmentData}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -121,7 +133,7 @@ const RevenueSection = () => {
                 dataKey="value"
                 animationDuration={1500}
               >
-                {departmentData.map((entry, index) => (
+                {activeDepartmentData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                 ))}
               </Pie>
@@ -147,7 +159,7 @@ const RevenueSection = () => {
         </div>
 
         <div style={{ marginTop: '1.5rem' }}>
-          {departmentData.map((item, index) => (
+          {activeDepartmentData.map((item, index) => (
             <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: item.color }} />
